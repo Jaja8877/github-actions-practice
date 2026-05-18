@@ -36,6 +36,7 @@ jobs:
 
       # Step 4: 執行 Build 並 Push
       # 這一步會根據你的 Dockerfile 進行構建，並推送到 Docker Hub
+      # 注意：不要在 tags: 的內容裡面寫註解，要把註解寫在上面
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -44,4 +45,4 @@ jobs:
           tags: |             # 設定 Image 的標籤 (Tag)
             jajye033/my-app:latest
             jajye033/my-app:${{ github.sha }} 
-            # github.sha 會自動帶入該次 Commit 的 ID，方便追蹤版本
+            
