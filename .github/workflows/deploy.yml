@@ -1,4 +1,4 @@
-name: Full CI/CD Pipeline (Build & Deploy)
+name: Flask CI/CD Pipeline
 
 on:
   push:
@@ -6,10 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # 第一個任務：Build and Push (CI)
   build-and-push:
-    # 🔥 重點：改成 self-hosted，這樣它才會在你的 WSL2 執行！
-    runs-on: self-hosted 
+    runs-on: self-hosted  # 使用你的 WSL2 Runner
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,25 +21,30 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./app            # 注意：這裡要指向 app 資料夾
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/my-app:${{ github.sha }}
+            ${{ secrets.DOCK_USERNAME }}/flask-app:latest
+            ${{ secrets.DOCK_USERNAME }}/flask-app:${{ github.sha }}
 
-  # 第二個任務：Deploy (CD)
   deploy:
-    runs-on: self-hosted  # 🔥 同樣改為 self-hosted
+    runs-on: self-hosted
     needs: build-and-push
     steps:
-      # 注意：因為是在本地執行，我們甚至不需要 SSH！
-      # 我們可以直接下指令操作本地的 Docker
       - name: Deploy to Local Docker
         run: |
-          echo "🚀 Starting local deployment..."
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest
-          docker stop my-app-container || true
-          docker rm my-app-container || true
-          docker run -d --name my-app-container -p 8000:8000 ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest
+          echo "🚀 Starting deployment..."
+          # 1. 拉取最新映像檔
+          docker pull ${{ secrets.DOCK_USERNAME }}/flask-app:latest
+          
+          # 2. 停止並移除舊容器 (如果存在的話)
+          docker stop flask-container || true
+          docker rm flask-container || true
+          
+          # 3. 啟動新容器 (將 5000 端口對應到主機的 5000)
+          docker run -d --name flask-container -p 5000:5000 ${{ secrets.DOCK_USERNAME }}/flask-app:latest
+          
+          # 4. 清理舊映像檔
           docker image prune -f
-          echo "✅ Deployment Complete on WSL2!"
+          
+          echo "✅ Deployment Complete! Check http://localhost:5000"
