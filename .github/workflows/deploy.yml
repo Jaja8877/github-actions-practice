@@ -32,27 +32,20 @@ jobs:
     runs-on: self-hosted
     needs: build-and-push
     steps:
-      - name: Execute remote commands via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: 22
-          script: |
-            # 1. 進入伺服器上的專案目錄 (假設你已經預先在伺服器建立好這個資料夾)
-            cd /home/ubuntu/my-devops-project
+      - name: Deploy Local Stack
+        run: |
+          # 1. 進入伺服器上的專案目錄
+          cd /home/ubuntu/my-devops-project
 
-            # 2. 這裡最關鍵：你需要把新的 docker-compose.yml 與設定檔「同步」到伺服器
-            # 在真實環境，通常會用 git pull 或 rsync 把最新的代碼拉下來
-            git pull origin main
+          # 2. 拉取最新代碼
+          git pull origin main
 
-            # 3. 重新啟動整個系統
-            echo "🚀 Restarting the entire stack..."
-            docker-compose down
-            docker-compose up -d
+          # 3. 重新啟動整個系統
+          echo "🚀 Restarting the entire stack locally..."
+          docker-compose down
+          docker-compose up -d
 
-            # 4. 清理舊的影像
-            docker image prune -f
-            
-            echo "✅ Entire stack (App + Prometheus + Grafana) is up to date!"
+          # 4. 清理舊的影像
+          docker image prune -f
+          
+          echo "✅ Entire stack is up to date!"
