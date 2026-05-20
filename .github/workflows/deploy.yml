@@ -32,20 +32,21 @@ jobs:
     runs-on: self-hosted
     needs: build-and-push
     steps:
+      # 1. 必須先在 deploy 階段也把代碼 check 下來，這樣目錄下才有 docker-compose.yml
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 直接在當前 workspace 執行重啟
       - name: Deploy Local Stack
         run: |
-          # 1. 進入伺服器上的專案目錄
-          cd /home/ubuntu/my-devops-project
-
-          # 2. 拉取最新代碼
-          git pull origin main
-
-          # 3. 重新啟動整個系統
+          echo "當前工作目錄是: $(pwd)"
+          
+          # 不需要 git pull 了，因為 actions/checkout 已經幫你拿到了最新代碼
           echo "🚀 Restarting the entire stack locally..."
           docker-compose down
           docker-compose up -d
 
-          # 4. 清理舊的影像
+          # 清理舊的影像
           docker image prune -f
           
           echo "✅ Entire stack is up to date!"
