@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 5s # 每 5 秒抓取一次數據
+
+scrape_configs:
+  - job_name: 'flask-app-monitoring'
+    static_configs:
+      # 關鍵：這裡的 'flask-app:5000' 就是 Docker Compose 裡的服務名稱與端口
+      - targets: ['flask-app:5000']

@@ -1,4 +1,4 @@
-name: Flask CI/CD Pipeline
+name: Full System CI/CD (App + Monitoring)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted  # 使用你的 WSL2 Runner
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,10 +18,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      # 這裡我們要同時構建 App 和 監控組件的 Image (如果需要的話)
+      - name: Build and push Flask App
         uses: docker/build-push-action@v5
         with:
-          context: ./app            # 注意：這裡要指向 app 資料夾
+          context: ./app
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/flask-app:latest
@@ -31,20 +32,27 @@ jobs:
     runs-on: self-hosted
     needs: build-and-push
     steps:
-      - name: Deploy to Local Docker
-        run: |
-          echo "🚀 Starting deployment..."
-          # 1. 拉取最新映像檔
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flask-app:latest
-          
-          # 2. 停止並移除舊容器 (如果存在的話)
-          docker stop flask-container || true
-          docker rm flask-container || true
-          
-          # 3. 啟動新容器 (將 5000 端口對應到主機的 5000)
-          docker run -d --name flask-container -p 5000:5000 ${{ secrets.DOCKERHUB_USERNAME }}/flask-app:latest
-          
-          # 4. 清理舊映像檔
-          docker image prune -f
-          
-          echo "✅ Deployment Complete! Check http://localhost:5000"
+      - name: Execute remote commands via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            # 1. 進入伺服器上的專案目錄 (假設你已經預先在伺服器建立好這個資料夾)
+            cd /home/ubuntu/my-devops-project
+
+            # 2. 這裡最關鍵：你需要把新的 docker-compose.yml 與設定檔「同步」到伺服器
+            # 在真實環境，通常會用 git pull 或 rsync 把最新的代碼拉下來
+            git pull origin main
+
+            # 3. 重新啟動整個系統
+            echo "🚀 Restarting the entire stack..."
+            docker-compose down
+            docker-compose up -d
+
+            # 4. 清理舊的影像
+            docker image prune -f
+            
+            echo "✅ Entire stack (App + Prometheus + Grafana) is up to date!"
